@@ -10,17 +10,32 @@ pip install botable
 ```
 
 # use
+Note: Press f1 to end the recording/playback and f2 to pause/resume it (both keys configurable as function paramater or cli option).
 ## as a lib
 ```python
 from botable import record, play
 
-events: list = record()
-play(events, loops=10, rate=1.5)
+# this collects the recorded events
+recorded_events = list(record())
+
+# this plays the recorded events and collects the played events
+played_events = list(play(recording, loops=3))
+````
+
+Help:
+```python
+help(record)
+help(play)
 ```
 
 ## as a cli
-
+Here is the same scenario but using the command line interface:
+```bash
+python -m botable record > ./recorded_events.py
+cat ./recorded_events.py | python -m botable play --playback-loops 3 > ./played_events.py
 ```
-python -m botable record > ./events.py
-cat ./events.py | python -m botable play --playback-loops 10 --playback-rate 1.5
+
+Help:
+```bash
+python -m botable --help
 ```

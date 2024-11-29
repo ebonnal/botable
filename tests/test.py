@@ -1,6 +1,6 @@
 import unittest
 
-from botable import record, play
+from botable.button_event import *
 
 
 class Test(unittest.TestCase):

@@ -2,3 +2,5 @@
 dist
 botable.egg-info
 **/__pycache__
+.venv
+.mypy_cache

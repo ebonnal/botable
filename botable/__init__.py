@@ -1,1 +1,1 @@
-from botable.__main__ import record, play
+from botable.botable import record, play, ButtonEvent
