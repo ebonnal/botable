@@ -8,7 +8,7 @@ setup(
     license="Apache 2.",
     author="Enzo Bonnal",
     author_email="bonnal.enzo.dev@gmail.com",
-    description="record and play keyboard and mouse clicks",
+    description="Record and play keyboard and mouse clicks",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     install_requires=["pynput"],
