@@ -1,6 +1,6 @@
 import argparse
 
-from botable.botable import play, record, input_button_events
+from botable.botable import play, record, stdin_button_events
 
 
 if __name__ == "__main__":
@@ -61,7 +61,7 @@ if __name__ == "__main__":
 
     if mode == "play":
         for button_event in play(
-            button_events=input_button_events(),
+            button_events=stdin_button_events(),
             exit_key=args.exit_key,
             pause_key=args.pause_key,
             loops=args.playback_loops,

@@ -8,6 +8,12 @@ from pynput.mouse import Button  # type: ignore
 from pynput.keyboard import Key, KeyCode  # type: ignore
 
 
+RECORDING = False
+PLAYING = False
+PAUSE_SLEEP_INCREMENT = 0.5
+POST_PLAY_SLEEP = 0.2
+
+
 class ButtonEvent(NamedTuple):
     button: str
     pressed: bool
@@ -15,13 +21,13 @@ class ButtonEvent(NamedTuple):
     coordinates: Optional[Tuple[int, int]]
 
 
-def input_button_events() -> Iterator[ButtonEvent]:
+def stdin_button_events() -> Iterator[ButtonEvent]:
     with suppress(EOFError):
         while event := input():
             yield ButtonEvent(*eval(event))
 
 
-def _to_key(key: str) -> Union[Key, KeyCode, str]:
+def str_to_key(key: str) -> Union[Key, KeyCode, str]:
     try:
         return eval(f"Key.{key}")
     except Exception:
@@ -31,10 +37,6 @@ def _to_key(key: str) -> Union[Key, KeyCode, str]:
     except Exception:
         pass
     return KeyCode.from_char(key)
-
-
-RECORDING = False
-PLAYING = False
 
 
 def record(exit_key: str = "f1", pause_key: str = "f2") -> Iterator[ButtonEvent]:
@@ -54,8 +56,8 @@ def record(exit_key: str = "f1", pause_key: str = "f2") -> Iterator[ButtonEvent]
         button_events: Deque[ButtonEvent] = deque()
         continue_ = True
 
-        exit_key_ = _to_key(exit_key)
-        pause_key_ = _to_key(pause_key)
+        exit_key_ = str_to_key(exit_key)
+        pause_key_ = str_to_key(pause_key)
 
         def save_button_events(button: str, pressed: bool, position):
             nonlocal paused_at, last_event_at
@@ -138,8 +140,8 @@ def play(
         mouse_ctrl = mouse.Controller()
         keyboard_ctrl = keyboard.Controller()
 
-        exit_key_ = _to_key(exit_key)
-        pause_key_ = _to_key(pause_key)
+        exit_key_ = str_to_key(exit_key)
+        pause_key_ = str_to_key(pause_key)
 
         def on_press(key: keyboard.Key):
             nonlocal paused_at, continue_
@@ -160,7 +162,7 @@ def play(
                     collected_button_events.append(button_event)
 
                 while continue_ and paused_at:
-                    time.sleep(0.5)
+                    time.sleep(PAUSE_SLEEP_INCREMENT)
 
                 if loop_index == 0 and offset > event_index:
                     continue
@@ -200,6 +202,6 @@ def play(
 
             button_events_ = collected_button_events
 
-        time.sleep(0.2)
+        time.sleep(POST_PLAY_SLEEP)
     finally:
         PLAYING = False
