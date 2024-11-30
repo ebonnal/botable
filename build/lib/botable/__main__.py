@@ -52,7 +52,8 @@ if __name__ == "__main__":
     )
     arg_parser.add_argument(
         "--playback-noise",
-        action="store_true",
+        required=False,
+        type=bool,
         help="in 'play' mode: to add noise to the time intervals between events",
     )
     args = arg_parser.parse_args()
@@ -68,7 +69,7 @@ if __name__ == "__main__":
             rate=args.playback_rate,
             delay=args.playback_delay,
             offset=args.playback_offset,
-            noise=args.playback_noise,
+            verbose=args.playback_verbose,
         ):
             print(tuple(button_event), flush=True)
     elif mode == "record":

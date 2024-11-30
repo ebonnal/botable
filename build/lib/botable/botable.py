@@ -11,7 +11,7 @@ from pynput.keyboard import Key, KeyCode  # type: ignore
 class ButtonEvent(NamedTuple):
     button: str
     pressed: bool
-    pre_sleep: float
+    seconds_since_last_event: float
     coordinates: Optional[Tuple[int, int]]
 
 
@@ -102,10 +102,6 @@ def record(exit_key: str = "f1", pause_key: str = "f2") -> Iterator[ButtonEvent]
         RECORDING = False
 
 
-def add_noise(x: float) -> float:
-    return x * (1 + random.betavariate(2, 5) / 2)
-
-
 def play(
     button_events: Iterable[ButtonEvent],
     exit_key: str = "f1",
@@ -178,15 +174,10 @@ def play(
                 else:
                     evaluated_button = eval(button_event.button)
 
+                sleep_duration = button_event.seconds_since_last_event / rate
                 if noise:
-                    button_event = ButtonEvent(
-                        button=button_event.button,
-                        pressed=button_event.pressed,
-                        pre_sleep=add_noise(button_event.pre_sleep),
-                        coordinates=button_event.coordinates,
-                    )
-
-                time.sleep(button_event.pre_sleep / rate)
+                    sleep_duration *= (1 + random.betavariate(2, 5) / 2)
+                time.sleep(sleep_duration)
 
                 if button_event.pressed:
                     ctrl.press(evaluated_button)
