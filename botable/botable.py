@@ -154,7 +154,7 @@ def play(
                 if loops > 1 and not loop_index:
                     collected_button_events.append(button_event)
 
-                while paused_at:
+                while continue_ and paused_at:
                     time.sleep(0.5)
 
                 if verbose:
