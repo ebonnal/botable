@@ -161,8 +161,6 @@ def play(
                 if loops > 1 and not loop_index:
                     collected_button_events.append(button_event)
 
-                while continue_ and paused_at:
-                    time.sleep(PAUSE_SLEEP_INCREMENT)
 
                 if loop_index == 0 and offset > event_index:
                     continue
@@ -189,6 +187,9 @@ def play(
                     )
 
                 time.sleep(button_event.pre_sleep / rate)
+
+                while continue_ and paused_at:
+                    time.sleep(PAUSE_SLEEP_INCREMENT)
 
                 if button_event.pressed:
                     ctrl.press(evaluated_button)
