@@ -1,7 +1,6 @@
 # 🤖 Botable
 > Record and play keyboard and mouse clicks
 
-[![Actions Status](https://github.com/ebonnal/botable/workflows/unittest/badge.svg)](https://github.com/ebonnal/botable/actions)
 [![Actions Status](https://github.com/ebonnal/botable/workflows/PyPI/badge.svg)](https://github.com/ebonnal/botable/actions)
 
 # install
