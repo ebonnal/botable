@@ -1,4 +1,4 @@
-# 🤖 Botable
+# 🤖 Botable [WIP]
 > Record and play keyboard and mouse clicks
 
 [![Actions Status](https://github.com/ebonnal/botable/workflows/PyPI/badge.svg)](https://github.com/ebonnal/botable/actions)

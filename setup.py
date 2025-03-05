@@ -11,5 +11,5 @@ setup(
     description="Record and play keyboard and mouse clicks",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
-    install_requires=["pynput"],
+    install_requires=["pynput==1.7.7"],
 )
