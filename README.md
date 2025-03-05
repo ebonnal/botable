@@ -1,4 +1,5 @@
-[![Actions Status](https://github.com/ebonnal/botable/workflows/PyPI/badge.svg)](https://github.com/ebonnal/botable/actions)
+[![pypi](https://github.com/ebonnal/botable/actions/workflows/pypi.yml/badge.svg?branch=main)](https://github.com/ebonnal/botable/actions)
+
 
 # 🤖 `botable`
 
