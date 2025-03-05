@@ -1,6 +1,6 @@
 [![Actions Status](https://github.com/ebonnal/botable/workflows/PyPI/badge.svg)](https://github.com/ebonnal/botable/actions)
 
-# 🤖 Botable [WIP]
+# 🤖 `botable`
 
 ### *Record and play keyboard and mouse events*
 
