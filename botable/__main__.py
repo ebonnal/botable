@@ -1,81 +1,101 @@
 import argparse
+import json
+import sys
 
-from botable.botable import play, record, stdin_button_events
+from botable import ButtonEvent, play, record
 
 
-if __name__ == "__main__":
+def main() -> int:
     arg_parser = argparse.ArgumentParser(
-        description="Record mouse and keyboard keys pressures/releases."
+        description="record/play mouse and keyboard keys events."
     )
-    arg_parser.add_argument("mode", help="either record or play")
     arg_parser.add_argument(
         "--exit-key",
         required=False,
         type=str,
         default="f1",
-        help="the key to press to end the ongoing recording or playback, default is f1",
+        help="The key to press to end the ongoing recording or playback, default is f1",
     )
     arg_parser.add_argument(
         "--pause-key",
         required=False,
         type=str,
         default="f2",
-        help="the key to press to pause/resume the ongoing recording or playback, default is f2",
+        help="The key to press to pause/resume the ongoing recording or playback, default is f2",
     )
-    arg_parser.add_argument(
-        "--playback-loops",
+
+    mode_subparser_action = arg_parser.add_subparsers(
+        dest="mode", required=True
+    )  # Required subcommand
+
+    mode_subparser_action.add_parser(
+        "record",
+        help="Record until you press the exit key (default: f1). Pause and resume the recording via the pause key (default: f2).",
+    )
+    play_arg_parser = mode_subparser_action.add_parser(
+        "play",
+        help="Play recorded events passed via stdin, until you press the exit key (default: f1). Pause and resume the playback via the pause key (default: f2).",
+    )
+
+    play_arg_parser.add_argument(
+        "--loops",
         required=False,
         type=int,
         default=1,
-        help="in 'play' mode: number of times to loop through recorded events, default is 1 single loop",
+        help="Number of times to loop through recorded events (default: 1 loop).",
     )
-    arg_parser.add_argument(
-        "--playback-rate",
+    play_arg_parser.add_argument(
+        "--rate",
         required=False,
         type=float,
         default=1.0,
-        help="in 'play' mode: speed coefficient to apply to the recording, default is x1.0",
+        help="Playback rate to apply to the recording (default: 1.0, i.e. recording speed).",
     )
-    arg_parser.add_argument(
-        "--playback-delay",
+    play_arg_parser.add_argument(
+        "--delay",
         required=False,
         type=float,
         default=1.0,
-        help="in 'play' mode: number of seconds to sleep before playing the recording, default is 1.0 second",
+        help="Number of seconds to wait before playing the recording (default: 1 second)",
     )
-    arg_parser.add_argument(
-        "--playback-offset",
+    play_arg_parser.add_argument(
+        "--offset",
         required=False,
         type=int,
         default=0,
-        help="in 'play' mode: how many events the first loop will skip, default is 0 event skipped",
+        help="How many incoming events to skip (default: 0).",
     )
-    arg_parser.add_argument(
-        "--playback-noise",
+    play_arg_parser.add_argument(
+        "--noise",
         action="store_true",
-        help="in 'play' mode: to add noise to the time intervals between events",
+        help="To add noise to the intervals between events",
     )
+
     args = arg_parser.parse_args()
 
-    mode = args.mode
-
-    if mode == "play":
+    if args.mode == "play":
         for button_event in play(
-            button_events=stdin_button_events(),
+            button_events=map(lambda line: ButtonEvent(**json.loads(line)), sys.stdin),
             exit_key=args.exit_key,
             pause_key=args.pause_key,
-            loops=args.playback_loops,
-            rate=args.playback_rate,
-            delay=args.playback_delay,
-            offset=args.playback_offset,
-            noise=args.playback_noise,
+            loops=args.loops,
+            rate=args.rate,
+            delay=args.delay,
+            offset=args.offset,
+            noise=args.noise,
         ):
-            print(tuple(button_event), flush=True)
-    elif mode == "record":
+            print(json.dumps(button_event._asdict()), flush=True)
+    elif args.mode == "record":
         for button_event in record(
             exit_key=args.exit_key,
             pause_key=args.pause_key,
         ):
-            print(tuple(button_event), flush=True)
+            print(json.dumps(button_event._asdict()), flush=True)
     else:
         raise ValueError("unsupported mode")
+
+    return 0
+
+
+if __name__ == "__main__":
+    main()
