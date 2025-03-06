@@ -12,7 +12,13 @@ from pynput.keyboard import Key, KeyCode  # type: ignore
 
 
 _RECORDING = False
+def is_recording() -> bool:
+    return _RECORDING
+
 _PLAYING = False
+def is_playing() -> bool:
+    return _PLAYING
+
 _PAUSE_SLEEP_INCREMENT = 0.5
 _POST_PLAY_SLEEP = 0.2
 
@@ -30,7 +36,7 @@ def str_to_key(key: str) -> Union[Key, KeyCode, str]:
     except Exception:
         pass
     try:
-        return eval(KeyCode(key[1:-1]))
+        return eval(KeyCode(key))
     except Exception:
         pass
     return KeyCode.from_char(key)
@@ -42,16 +48,13 @@ def record(exit_key: str = "f1", pause_key: str = "f2") -> Iterator[ButtonEvent]
     Pressing the `exit_key` will terminate the recording.
     Pressing the `pause_key` will pause/resume the recording.
     """
-    global _PLAYING, _RECORDING
-    if _PLAYING:
-        raise RuntimeError("Attempt to record while playing")
+    global _RECORDING
     _RECORDING = True
     try:
         paused_at: Optional[float] = None
         last_event_at = time.time()
         click_timestamps: List[float] = [time.time()]
         button_events: Deque[ButtonEvent] = deque()
-        continue_ = True
 
         exit_key_ = str_to_key(exit_key)
         pause_key_ = str_to_key(pause_key)
@@ -67,9 +70,11 @@ def record(exit_key: str = "f1", pause_key: str = "f2") -> Iterator[ButtonEvent]
             last_event_at = current_time
 
         def on_press(key: keyboard.Key):
-            nonlocal paused_at, last_event_at, continue_
+            global _RECORDING
+            nonlocal paused_at, last_event_at
             if key == exit_key_:
-                continue_ = False
+                _RECORDING = False
+                return
             elif key == pause_key_:
                 if paused_at:
                     if click_timestamps:
@@ -93,12 +98,16 @@ def record(exit_key: str = "f1", pause_key: str = "f2") -> Iterator[ButtonEvent]
 
         mouse.Listener(on_click=on_click).start()
 
-        while continue_:
-            while button_events:
-                yield button_events.popleft()
-            time.sleep(0.1)
-    finally:
+        def recorded_events() -> Iterator[ButtonEvent]:
+            while button_events or _RECORDING:
+                while button_events:
+                    yield button_events.popleft()
+                time.sleep(0.1)
+                
+        return recorded_events()
+    except:
         _RECORDING = False
+        raise
 
 
 def _add_noise(x: float) -> float:
@@ -124,9 +133,7 @@ def play(
     Pressing the `exit_key` will terminate the recording.
     Pressing the `pause_key` will pause/resume the recording.
     """
-    global _PLAYING, _RECORDING
-    if _RECORDING:
-        raise RuntimeError("Attempt to play while recording")
+    global _PLAYING
     _PLAYING = True
     try:
         time.sleep(delay)
