@@ -2,7 +2,7 @@ import argparse
 import json
 import sys
 
-from botable import ButtonEvent, play, record
+from botable.record import Event, play, record
 
 
 def main() -> int:
@@ -22,6 +22,11 @@ def main() -> int:
         type=str,
         default="f2",
         help="The key to press to pause/resume the ongoing recording or playback, default is f2",
+    )
+    arg_parser.add_argument(
+        "--noise",
+        action="store_true",
+        help="To add noise to the intervals between events",
     )
 
     mode_subparser_action = arg_parser.add_subparsers(
@@ -65,17 +70,12 @@ def main() -> int:
         default=0,
         help="How many incoming events to skip (default: 0).",
     )
-    play_arg_parser.add_argument(
-        "--noise",
-        action="store_true",
-        help="To add noise to the intervals between events",
-    )
 
     args = arg_parser.parse_args()
 
     if args.mode == "play":
-        for button_event in play(
-            button_events=map(lambda line: ButtonEvent(**json.loads(line)), sys.stdin),
+        for event in play(
+            events=map(lambda line: Event(**json.loads(line)), sys.stdin),
             exit_key=args.exit_key,
             pause_key=args.pause_key,
             loops=args.loops,
@@ -84,13 +84,13 @@ def main() -> int:
             offset=args.offset,
             noise=args.noise,
         ):
-            print(json.dumps(button_event._asdict()), flush=True)
+            print(json.dumps(event._asdict()), flush=True)
     elif args.mode == "record":
-        for button_event in record(
+        for event in record(
             exit_key=args.exit_key,
             pause_key=args.pause_key,
         ):
-            print(json.dumps(button_event._asdict()), flush=True)
+            print(json.dumps(event._asdict()), flush=True)
     else:
         raise ValueError("unsupported mode")
 
