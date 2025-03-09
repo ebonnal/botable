@@ -2,7 +2,7 @@ import argparse
 import json
 import sys
 
-from botable import ButtonEvent, play, record
+from botable import Event, Player, Recorder
 
 
 def main() -> int:
@@ -13,15 +13,20 @@ def main() -> int:
         "--exit-key",
         required=False,
         type=str,
-        default="f1",
+        default="Key.f1",
         help="The key to press to end the ongoing recording or playback, default is f1",
     )
     arg_parser.add_argument(
         "--pause-key",
         required=False,
         type=str,
-        default="f2",
+        default="Key.f2",
         help="The key to press to pause/resume the ongoing recording or playback, default is f2",
+    )
+    arg_parser.add_argument(
+        "--noise",
+        action="store_true",
+        help="To add noise to the intervals between events",
     )
 
     mode_subparser_action = arg_parser.add_subparsers(
@@ -65,17 +70,11 @@ def main() -> int:
         default=0,
         help="How many incoming events to skip (default: 0).",
     )
-    play_arg_parser.add_argument(
-        "--noise",
-        action="store_true",
-        help="To add noise to the intervals between events",
-    )
 
     args = arg_parser.parse_args()
 
     if args.mode == "play":
-        for button_event in play(
-            button_events=map(lambda line: ButtonEvent(**json.loads(line)), sys.stdin),
+        for event in Player(
             exit_key=args.exit_key,
             pause_key=args.pause_key,
             loops=args.loops,
@@ -83,14 +82,14 @@ def main() -> int:
             delay=args.delay,
             offset=args.offset,
             noise=args.noise,
-        ):
-            print(json.dumps(button_event._asdict()), flush=True)
+        ).play(map(lambda line: Event.from_json(line), sys.stdin)):
+            print(event.to_json(), flush=True)
     elif args.mode == "record":
-        for button_event in record(
+        for event in Recorder(
             exit_key=args.exit_key,
             pause_key=args.pause_key,
-        ):
-            print(json.dumps(button_event._asdict()), flush=True)
+        ).record():
+            print(event.to_json(), flush=True)
     else:
         raise ValueError("unsupported mode")
 
