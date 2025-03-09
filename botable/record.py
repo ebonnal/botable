@@ -1,31 +1,60 @@
+import time
 from multiprocessing import Queue
 from queue import Empty
-import time
-from typing import Iterator, Optional, Union, Tuple
+from typing import Iterator, Optional, Tuple, Union
+
 from pynput import keyboard, mouse  # type: ignore
-from botable.common import Base, Event
+
+from botable.common import Base, Event, KeyboardEvent, MouseEvent, add_noise
 
 
 class Recorder(Base):
     _last_event_at: float
     _events: "Queue[Event]"
     is_recording: bool = False
+    _paused_at: Optional[float] = None
+
+    @property
+    def is_paused(self) -> bool:
+        return self._paused_at is not None
 
     def _save_events(
         self,
-        button: Union[keyboard.Key, mouse.Button],
+        button: Union[keyboard.Key, keyboard.KeyCode, mouse.Button],
         pressed: bool,
         position: Optional[Tuple[int, int]],
-    ):
+    ) -> None:
         if self.is_paused:
             return
         current_time = time.time()
-        self._events.put(
-            Event(str(button), pressed, current_time - self._last_event_at, position)
-        )
-        self.last_event_at = current_time
+        pre_sleep = current_time - self._last_event_at
+        if self.noise:
+            pre_sleep = add_noise(pre_sleep)
+
+        if isinstance(button, mouse.Button):
+            if not position:
+                return
+            self._events.put(
+                MouseEvent(
+                    str(button),
+                    action="press" if pressed else "release",
+                    wait_seconds=pre_sleep,
+                    coordinates=position,
+                )
+            )
+        else:
+            self._events.put(
+                KeyboardEvent(
+                    str(button),
+                    action="press" if pressed else "release",
+                    wait_seconds=pre_sleep,
+                )
+            )
+        self._last_event_at = current_time
 
     def _on_press(self, key: Optional[Union[keyboard.Key, keyboard.KeyCode]]) -> None:
+        if not key:
+            return
         if key == self.exit_key:
             self.is_recording = False
         elif key == self.pause_key:
@@ -39,9 +68,11 @@ class Recorder(Base):
             self._save_events(key, True, None)
 
     def _on_release(self, key: Optional[Union[keyboard.Key, keyboard.KeyCode]]):
+        if not key:
+            return
         if key == self.pause_key:
             return
-        self._save_events(str(key), False, None)
+        self._save_events(key, False, None)
 
     def _on_click(self, x: int, y: int, button: mouse.Button, pressed: bool):
         self._save_events(button, pressed, (int(x), int(y)))
@@ -66,3 +97,16 @@ class Recorder(Base):
 
         self.is_recording = True
         return recorded_events()
+
+
+def record(
+    *,
+    pause_key: str = "Key.f2",
+    exit_key: str = "Key.f1",
+    noise: bool = False,
+) -> Iterator[Event]:
+    return Recorder(
+        pause_key=pause_key,
+        exit_key=exit_key,
+        noise=noise,
+    ).record()

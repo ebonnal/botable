@@ -13,14 +13,14 @@ def main() -> int:
         "--exit-key",
         required=False,
         type=str,
-        default="f1",
+        default="Key.f1",
         help="The key to press to end the ongoing recording or playback, default is f1",
     )
     arg_parser.add_argument(
         "--pause-key",
         required=False,
         type=str,
-        default="f2",
+        default="Key.f2",
         help="The key to press to pause/resume the ongoing recording or playback, default is f2",
     )
     arg_parser.add_argument(
@@ -82,14 +82,14 @@ def main() -> int:
             delay=args.delay,
             offset=args.offset,
             noise=args.noise,
-        ).play(map(lambda line: Event(**json.loads(line)), sys.stdin)):
-            print(json.dumps(event._asdict()), flush=True)
+        ).play(map(lambda line: Event.from_json(line), sys.stdin)):
+            print(event.to_json(), flush=True)
     elif args.mode == "record":
         for event in Recorder(
             exit_key=args.exit_key,
             pause_key=args.pause_key,
         ).record():
-            print(json.dumps(event._asdict()), flush=True)
+            print(event.to_json(), flush=True)
     else:
         raise ValueError("unsupported mode")
 

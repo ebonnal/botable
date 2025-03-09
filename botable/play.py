@@ -1,10 +1,11 @@
+import time
 from multiprocessing import Queue
 from queue import Empty
-import time
 from typing import Any, Iterable, Iterator, List, Optional, Union
+
 from pynput import keyboard, mouse  # type: ignore
 
-from botable.common import Base, Event, add_noise
+from botable.common import Base, Event, KeyboardEvent, MouseEvent, add_noise
 
 
 class Player(Base):
@@ -13,8 +14,8 @@ class Player(Base):
     def __init__(
         self,
         *,
-        pause_key: str = "f2",
-        exit_key: str = "f1",
+        pause_key: str = "Key.f2",
+        exit_key: str = "Key.f1",
         loops: int = 1,
         rate: float = 1.0,
         delay: float = 1.0,
@@ -31,13 +32,13 @@ class Player(Base):
         self.delay = delay
         self.offset = offset
         self.is_playing = False
+        self.is_paused = False
 
     def _on_press(self, key: Optional[Union[keyboard.Key, keyboard.KeyCode]]):
         if key == self.exit_key:
             self.is_playing = False
         elif key == self.pause_key:
-            self._paused_at = None if self._paused_at else time.time()
-            self._resume_signal.put(None)
+            self.is_paused = not self.is_paused
 
     def play(self, events: Iterable[Event]) -> Iterator[Event]:
         """
@@ -70,40 +71,57 @@ class Player(Base):
                     if loop_index == 0 and self.offset > event_index:
                         continue
 
-                    if event.coordinates is None:
-                        ctrl = keyboard_ctrl
-                    else:
-                        mouse_ctrl.position = event.coordinates
-                        ctrl = mouse_ctrl
-
                     if self.noise:
-                        event = Event(
-                            button=event.button,
-                            pressed=event.pressed,
-                            pre_sleep=add_noise(event.pre_sleep),
-                            coordinates=event.coordinates,
-                        )
+                        event.wait_seconds = add_noise(event.wait_seconds)
 
-                    time.sleep(event.pre_sleep / self.rate)
+                    # point mouse to click coordinates before waiting for click time
+                    if isinstance(event, MouseEvent):
+                        mouse_ctrl.position = event.coordinates
+
+                    time.sleep(event.wait_seconds / self.rate)
 
                     while self.is_playing and self.is_paused:
-                        try:
-                            self._resume_signal.get(timeout=self._get_timeout)
-                            self._resume_signal = Queue()
-                            break
-                        except Empty:
-                            pass
-
-                    if event.pressed:
-                        ctrl.press(event.key)
-                    else:
-                        ctrl.release(event.key)
-
-                    yield event
+                        time.sleep(0.1)
 
                     if not self.is_playing:
                         return
 
+                    if isinstance(event, KeyboardEvent):
+                        if event.action == "press":
+                            keyboard_ctrl.press(event.button())
+                        elif event.action == "release":
+                            keyboard_ctrl.release(event.button())
+                    elif isinstance(event, MouseEvent):
+                        if event.action == "press":
+                            mouse_ctrl.press(event.button())
+                        elif event.action == "release":
+                            mouse_ctrl.release(event.button())
+                    else:
+                        raise TypeError(f"event of type {type(event)} is not supported")
+                    yield event
+
                 events = collected_events
         finally:
             self.is_playing = False
+
+
+def play(
+    events: Iterable[Event],
+    *,
+    pause_key: str = "Key.f2",
+    exit_key: str = "Key.f1",
+    loops: int = 1,
+    rate: float = 1.0,
+    delay: float = 1.0,
+    offset: int = 0,
+    noise: bool = False,
+) -> Iterator[Event]:
+    return Player(
+        pause_key=pause_key,
+        exit_key=exit_key,
+        loops=loops,
+        rate=rate,
+        delay=delay,
+        offset=offset,
+        noise=noise,
+    ).play(events)
