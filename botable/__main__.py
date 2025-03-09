@@ -2,7 +2,7 @@ import argparse
 import json
 import sys
 
-from botable.record import Event, play, record
+from botable import Event, Player, Recorder
 
 
 def main() -> int:
@@ -74,8 +74,7 @@ def main() -> int:
     args = arg_parser.parse_args()
 
     if args.mode == "play":
-        for event in play(
-            events=map(lambda line: Event(**json.loads(line)), sys.stdin),
+        for event in Player(
             exit_key=args.exit_key,
             pause_key=args.pause_key,
             loops=args.loops,
@@ -83,13 +82,13 @@ def main() -> int:
             delay=args.delay,
             offset=args.offset,
             noise=args.noise,
-        ):
+        ).play(map(lambda line: Event(**json.loads(line)), sys.stdin)):
             print(json.dumps(event._asdict()), flush=True)
     elif args.mode == "record":
-        for event in record(
+        for event in Recorder(
             exit_key=args.exit_key,
             pause_key=args.pause_key,
-        ):
+        ).record():
             print(json.dumps(event._asdict()), flush=True)
     else:
         raise ValueError("unsupported mode")

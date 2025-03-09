@@ -1,22 +1,22 @@
 from multiprocessing import Queue
+from queue import Empty
 import time
 from typing import Iterator, Optional, Union, Tuple
 from pynput import keyboard, mouse  # type: ignore
 from botable.common import Base, Event
 
+
 class Recorder(Base):
-    _EVENT_GET_TIMEOUT = 1
     _last_event_at: float
     _events: "Queue[Event]"
+    is_recording: bool = False
 
-    def __post_init__(self) -> None:
-        self.is_recording = False
-    
-    @property
-    def is_paused(self) -> bool:
-        return self._paused_at is not None
-
-    def _save_events(self, button: Union[keyboard.Key, mouse.Button], pressed: bool, position: Optional[Tuple[int, int]]):
+    def _save_events(
+        self,
+        button: Union[keyboard.Key, mouse.Button],
+        pressed: bool,
+        position: Optional[Tuple[int, int]],
+    ):
         if self.is_paused:
             return
         current_time = time.time()
@@ -25,7 +25,7 @@ class Recorder(Base):
         )
         self.last_event_at = current_time
 
-    def _on_press(self, key: keyboard.Key) -> None:
+    def _on_press(self, key: Optional[Union[keyboard.Key, keyboard.KeyCode]]) -> None:
         if key == self.exit_key:
             self.is_recording = False
         elif key == self.pause_key:
@@ -38,7 +38,7 @@ class Recorder(Base):
         else:
             self._save_events(key, True, None)
 
-    def _on_release(self, key: keyboard.Key):
+    def _on_release(self, key: Optional[Union[keyboard.Key, keyboard.KeyCode]]):
         if key == self.pause_key:
             return
         self._save_events(str(key), False, None)
@@ -54,15 +54,15 @@ class Recorder(Base):
         """
         self._events = Queue()
         self._last_event_at = time.time()
+        keyboard.Listener(on_press=self._on_press, on_release=self._on_release).start()
+        mouse.Listener(on_click=self._on_click).start()
+
+        def recorded_events() -> Iterator[Event]:
+            while not self._events.empty() or self.is_recording:
+                try:
+                    yield self._events.get(timeout=self._get_timeout)
+                except Empty:
+                    continue
+
         self.is_recording = True
-        try:
-            keyboard.Listener(on_press=self._on_press, on_release=self._on_release).start()
-            mouse.Listener(on_click=self._on_click).start()
-            def recorded_events() -> Iterator[Event]:
-                while self._events or self.is_recording:
-                    yield self._events.get(timeout=self._EVENT_GET_TIMEOUT)
-                    
-            return recorded_events()
-        except:
-            self.is_recording = False
-            raise
+        return recorded_events()

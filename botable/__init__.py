@@ -1,2 +1,3 @@
-from play import play
-from record import record
+from botable.play import Player
+from botable.record import Recorder
+from botable.common import Event

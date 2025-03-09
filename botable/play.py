@@ -1,24 +1,17 @@
+from multiprocessing import Queue
+from queue import Empty
 import time
-from typing import Iterable, Iterator, List, Optional
+from typing import Any, Iterable, Iterator, List, Optional, Union
 from pynput import keyboard, mouse  # type: ignore
-from pynput.mouse import Button
 
-from botable.common import Base, Event  # type: ignore
-
-Button
-from pynput.keyboard import KeyCode  # type: ignore
-
-_PAUSE_SLEEP_INCREMENT = 0.5
-_POST_PLAY_SLEEP = 0.2
+from botable.common import Base, Event, add_noise
 
 
 class Player(Base):
-    _EVENT_GET_TIMEOUT = 1
-    _last_event_at: float
+    _resume_signal: "Queue[Any]"
 
     def __init__(
         self,
-        events: Iterable[Event],
         *,
         pause_key: str = "f2",
         exit_key: str = "f1",
@@ -33,22 +26,20 @@ class Player(Base):
             exit_key=exit_key,
             noise=noise,
         )
-        self.events = events
         self.loops = loops
         self.rate = rate
         self.delay = delay
         self.offset = offset
-
         self.is_playing = False
-    
-    def _on_press(self, key: keyboard.Key):
+
+    def _on_press(self, key: Optional[Union[keyboard.Key, keyboard.KeyCode]]):
         if key == self.exit_key:
             self.is_playing = False
         elif key == self.pause_key:
             self._paused_at = None if self._paused_at else time.time()
+            self._resume_signal.put(None)
 
-    def play(
-    ) -> Iterator[Event]:
+    def play(self, events: Iterable[Event]) -> Iterator[Event]:
         """
         Waits `delay` and then iterates on `events` to play them,
         optionally playing them at a modified speed `rate`,
@@ -58,33 +49,25 @@ class Player(Base):
         Pressing the `exit_key` will terminate the recording.
         Pressing the `pause_key` will pause/resume the recording.
         """
-        global _PLAYING
-        _PLAYING = True
+        self.is_playing = True
         try:
-            time.sleep(delay)
+            time.sleep(self.delay)
 
-            continue_ = True
-            paused_at: Optional[float] = None
+            self._resume_signal: "Queue[Any]" = Queue()
             loop_index, event_index = 0, 0
             mouse_ctrl = mouse.Controller()
             keyboard_ctrl = keyboard.Controller()
 
-            exit_key_ = str_to_key(exit_key)
-            pause_key_ = str_to_key(pause_key)
-
-
-            keyboard.Listener(on_press=on_press).start()
+            keyboard.Listener(on_press=self._on_press).start()
 
             collected_events: List[Event] = []
 
-            events_: Iterable[Event] = events
-
-            for loop_index in range(loops):
-                for event_index, event in enumerate(events_):
-                    if loops > 1 and not loop_index:
+            for loop_index in range(self.loops):
+                for event_index, event in enumerate(events):
+                    if self.loops > 1 and not loop_index:
                         collected_events.append(event)
 
-                    if loop_index == 0 and offset > event_index:
+                    if loop_index == 0 and self.offset > event_index:
                         continue
 
                     if event.coordinates is None:
@@ -93,38 +76,34 @@ class Player(Base):
                         mouse_ctrl.position = event.coordinates
                         ctrl = mouse_ctrl
 
-                    if event.button.startswith("<") and event.button.endswith(
-                        ">"
-                    ):
-                        evaluated_button = KeyCode(int(event.button[1:-1]))
-                    else:
-                        evaluated_button = eval(event.button)
-
-                    if noise:
+                    if self.noise:
                         event = Event(
                             button=event.button,
                             pressed=event.pressed,
-                            pre_sleep=_add_noise(event.pre_sleep),
+                            pre_sleep=add_noise(event.pre_sleep),
                             coordinates=event.coordinates,
                         )
 
-                    time.sleep(event.pre_sleep / rate)
+                    time.sleep(event.pre_sleep / self.rate)
 
-                    while continue_ and paused_at:
-                        time.sleep(_PAUSE_SLEEP_INCREMENT)
+                    while self.is_playing and self.is_paused:
+                        try:
+                            self._resume_signal.get(timeout=self._get_timeout)
+                            self._resume_signal = Queue()
+                            break
+                        except Empty:
+                            pass
 
                     if event.pressed:
-                        ctrl.press(evaluated_button)
+                        ctrl.press(event.key)
                     else:
-                        ctrl.release(evaluated_button)
+                        ctrl.release(event.key)
 
                     yield event
 
-                    if not continue_:
+                    if not self.is_playing:
                         return
 
-                events_ = collected_events
-
-            time.sleep(_POST_PLAY_SLEEP)
+                events = collected_events
         finally:
-            _PLAYING = False
+            self.is_playing = False
