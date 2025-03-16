@@ -75,7 +75,7 @@ class Player(Base):
                         event.wait_seconds = add_noise(event.wait_seconds)
 
                     # point mouse to click coordinates before waiting for click time
-                    if isinstance(event, MouseEvent):
+                    if isinstance(event, MouseEvent) and event.coordinates:
                         mouse_ctrl.position = event.coordinates
 
                     time.sleep(event.wait_seconds / self.rate)

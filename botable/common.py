@@ -37,7 +37,7 @@ class KeyboardEvent(Event):
 
 @dataclass
 class MouseEvent(Event):
-    coordinates: Tuple[int, int]
+    coordinates: Optional[Tuple[int, int]]
 
     def button(self) -> Button:
         return eval(self.button_str)
