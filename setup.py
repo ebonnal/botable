@@ -2,7 +2,7 @@ from setuptools import setup  # type: ignore
 
 setup(
     name="botable",
-    version="0.0.10",
+    version="0.0.11",
     packages=["botable"],
     url="http://github.com/ebonnal/botable",
     license="Apache 2.",
